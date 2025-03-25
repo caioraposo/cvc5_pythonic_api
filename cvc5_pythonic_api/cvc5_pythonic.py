@@ -938,6 +938,18 @@ def FreshFunction(*sig):
     return Function(name, *sig)
 
 
+def DefRecFunction(f, args, body):
+    """Define a new SMT recursive function with the given function declaration.
+    Replaces constants in `args` with bound variables.
+    """
+    ctx = f.ctx
+    consts = [a.ast for a in args]
+    vars_ = [ctx.solver.mkVar(a.sort().ast, str(a)) for a in args]
+    subbed_body = body.ast.substitute(consts, vars_)
+    func = ctx.solver.defineFunRec(f.as_ast(), vars_, subbed_body)
+    return _to_expr_ref(func, ctx)
+
+
 #########################################
 #
 # Expressions
