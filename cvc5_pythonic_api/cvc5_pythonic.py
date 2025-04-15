@@ -938,17 +938,32 @@ def FreshFunction(*sig):
     return Function(name, *sig)
 
 
-def DefRecFunction(f, args, body):
+def RecFunction(name, *sig):
+    """Create a new recursive function with the given sorts."""
+    sig = _get_args(sig)
+    if debugging():
+        _assert(len(sig) > 0, "At least two arguments expected")
+    arity = len(sig) - 1
+    rng = sig[arity]
+    if debugging():
+        _assert(is_sort(rng), "SMT sort expected")
+    ctx = rng.ctx
+    sort = ctx.solver.mkFunctionSort([sig[i].ast for i in range(arity)], rng.ast)
+    e = ctx.solver.mkConst(sort, name)
+    return FuncDeclRef(e, ctx)
+
+
+def RecAddDefinition(f, args, body):
     """Define a new SMT recursive function with the given function declaration.
     Replaces constants in `args` with bound variables.
     """
+    if is_app(args):
+        args = [args]
     ctx = f.ctx
     consts = [a.ast for a in args]
     vars_ = [ctx.solver.mkVar(a.sort().ast, str(a)) for a in args]
     subbed_body = body.ast.substitute(consts, vars_)
-    func = ctx.solver.defineFunRec(f.as_ast(), vars_, subbed_body)
-    return _to_expr_ref(func, ctx)
-
+    ctx.solver.defineFunRec(f.ast, vars_, subbed_body, True)
 
 #########################################
 #
